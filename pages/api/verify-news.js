@@ -1,48 +1,45 @@
 import { createClient } from "next-sanity"
 
-const sanityClient = createClient({
+const client = createClient({
   projectId: "hknjs1j6",
   dataset: "production",
   useCdn: false,
+  // token: process.env.SANITY_API_WRITE_TOKEN, // Uncomment only if you add a token
 })
 
-// Local storage for busted items
+// In-memory fallback store so it works instantly without crashing on tokens
 let bustedNewsStore = []
 
 export default async function handler(req, res) {
+  if (req.method === "GET") {
+    return res.status(200).json({ bustedList: bustedNewsStore })
+  }
+
   if (req.method === "POST") {
     try {
       const { query } = req.body
-      if (!query) return res.status(400).json({ error: "Query required" })
+      if (!query) return res.status(400).json({ error: "Query is required" })
 
-      // Fetch news from Sanity Studio
-      const sanityNews = await sanityClient.fetch(`*[_type == 'blog']{ title, content, category }`)
+      // Fetch official news from Sanity Studio
+      const sanityNews = await client.fetch(`*[_type == 'blog']{ title, content, category }`)
 
       const lowerQuery = query.toLowerCase()
-      
-      // Match query against Sanity news items (checks title or content overlap)
-      const matchedItem = sanityNews.find(item => {
+      const words = lowerQuery.split(" ").filter((w) => w.length > 3)
+
+      const matchedItem = sanityNews.find((item) => {
         const title = item.title?.toLowerCase() || ""
         const content = item.content?.toLowerCase() || ""
-        // Split query into significant words
-        const words = lowerQuery.split(" ").filter(w => w.length > 3)
-        return words.some(word => title.includes(word) || content.includes(word))
+        return words.some((word) => title.includes(word) || content.includes(word))
       })
 
-      let isTrue = false
-      let verdict = "FALSE (BUSTED)"
-      let explanation = ""
-
-      if (matchedItem) {
-        isTrue = true
-        verdict = "TRUE (VERIFIED)"
-        explanation = `Matches official record under category [${matchedItem.category}]: "${matchedItem.title}"`
-      } else {
-        explanation = `No official records or matching news found in database supporting this claim. Flagged as unverified/busted.`
-      }
+      const isTrue = Boolean(matchedItem)
+      const verdict = isTrue ? "TRUE (VERIFIED)" : "FALSE (BUSTED)"
+      const explanation = isTrue
+        ? `Verified against official record [${matchedItem.category}]: "${matchedItem.title}"`
+        : `No matching records found in Sanity Studio supporting this claim. Flagged as debunked.`
 
       const resultItem = {
-        id: Date.now().toString(),
+        _id: Date.now().toString(),
         claim: query,
         verdict,
         isTrue,
@@ -50,7 +47,7 @@ export default async function handler(req, res) {
         createdAt: new Date().toISOString(),
       }
 
-      // If busted, add to list automatically
+      // If false, add to busted list
       if (!isTrue) {
         bustedNewsStore.unshift(resultItem)
       }
@@ -61,14 +58,14 @@ export default async function handler(req, res) {
     }
   }
 
-  if (req.method === "GET") {
-    return res.status(200).json({ bustedList: bustedNewsStore })
-  }
-
   if (req.method === "DELETE") {
-    const { id } = req.body
-    bustedNewsStore = bustedNewsStore.filter(item => item.id !== id)
-    return res.status(200).json({ bustedList: bustedNewsStore })
+    try {
+      const { id } = req.body
+      bustedNewsStore = bustedNewsStore.filter((item) => item._id !== id)
+      return res.status(200).json({ bustedList: bustedNewsStore })
+    } catch (err) {
+      return res.status(500).json({ error: err.message })
+    }
   }
 
   res.setHeader("Allow", ["GET", "POST", "DELETE"])

@@ -123,17 +123,15 @@ export default function InfoDesk({ news }) {
 
             {verificationResult && (
               <div
-                className={`mb-10 rounded-lg border p-6 font-body ${
-                  verificationResult.isTrue
+                className={`mb-10 rounded-lg border p-6 font-body ${verificationResult.isTrue
                     ? "border-green bg-green-light/20 text-primary dark:text-white"
                     : "border-red-500 bg-red-100/20 text-primary dark:text-white"
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <span
-                    className={`rounded-full px-4 py-1 text-sm font-bold text-white ${
-                      verificationResult.isTrue ? "bg-green" : "bg-red-600"
-                    }`}
+                    className={`rounded-full px-4 py-1 text-sm font-bold text-white ${verificationResult.isTrue ? "bg-green" : "bg-red-600"
+                      }`}
                   >
                     {verificationResult.verdict}
                   </span>
@@ -148,7 +146,7 @@ export default function InfoDesk({ news }) {
                 🚫 Busted News Directory (CRUD)
               </h2>
 
-              {bustedNews.length === 0 ? (
+              {/* {bustedNews.length === 0 ? (
                 <p className="font-body font-light text-grey dark:text-white">No busted claims logged yet.</p>
               ) : (
                 bustedNews.map((item) => (
@@ -176,7 +174,32 @@ export default function InfoDesk({ news }) {
                     </button>
                   </div>
                 ))
-              )}
+              )} */}
+              {bustedNews.map((item) => (
+                <div key={item._id} className="mt-5 flex items-start justify-between border-b border-grey-lighter pb-8">
+                  <div>
+                    <span className="mb-4 inline-block rounded-full bg-red-500 px-3 py-1 font-body text-sm font-semibold text-white">
+                      BUSTED
+                    </span>
+                    <h3 className="font-body text-lg font-semibold text-primary dark:text-white">
+                      "{item.claim}"
+                    </h3>
+                    <p className="pt-2 font-body font-light text-primary dark:text-white">
+                      {item.explanation}
+                    </p>
+                    <p className="pt-2 font-body text-xs text-grey dark:text-white">
+                      Debunked on: {new Date(item.createdAt).toLocaleDateString("en-CA")}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => handleDeleteBusted(item._id)}
+                    className="ml-4 rounded border border-red-500 px-3 py-1 text-xs font-semibold text-red-500 hover:bg-red-500 hover:text-white transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
             </div>
 
             <Quote />
